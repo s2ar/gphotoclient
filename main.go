@@ -102,25 +102,24 @@ func check(e error) {
 
 func dirTree(ctx context.Context, client *gphotos.Client, out io.Writer, path string, uploadedFiles map[string]string, limit *int, step int) error {
 	pathAbs, err := filepath.Abs(path)
-	check(err)
-	recDirTree(ctx, client, out, pathAbs, 0, uploadedFiles, limit, step)
-	return nil
+	if err != nil {
+		return fmt.Errorf("dirTree: %w", err)
+	}
+	return recDirTree(ctx, client, out, pathAbs, 0, uploadedFiles, limit, step)
 }
 
-func recDirTree(ctx context.Context, client *gphotos.Client, out io.Writer, path string, lvl int, uploadedFiles map[string]string, limit *int, step int) {
+func recDirTree(ctx context.Context, client *gphotos.Client, out io.Writer, path string, lvl int, uploadedFiles map[string]string, limit *int, step int) error {
 
 	var size int64
 	var pathList []string
-	var pathListErr error
 	var availableExt = []string{".png", ".JPG", ".jpg"}
 
 	lvl++
 	hPath, _ := os.Open(path)
 	fInfo, _ := hPath.Stat()
-	if fInfo.IsDir() {
-		pathList, pathListErr = hPath.Readdirnames(1000)
-		check(pathListErr)
 
+	if fInfo.IsDir() {
+		pathList, _ = hPath.Readdirnames(10000)
 		sort.Strings(pathList)
 	}
 
@@ -145,7 +144,7 @@ func recDirTree(ctx context.Context, client *gphotos.Client, out io.Writer, path
 
 						err := uploadMedia(ctx, client, absolutePath)
 						if err == nil {
-							fmt.Println(absolutePath)
+							fmt.Println(*limit, absolutePath)
 							uploadedFiles[key] = absolutePath
 							saveSuccessedToFile(key, absolutePath)
 							//fmt.Fprintln(out, absolutePath)
@@ -155,6 +154,10 @@ func recDirTree(ctx context.Context, client *gphotos.Client, out io.Writer, path
 								fmt.Println("Limit reached")
 								os.Exit(0)
 							}
+						} else {
+							err := fmt.Errorf(strconv.Itoa(*limit)+", "+absolutePath+", uploadMedia: %w", err)
+							fmt.Println(err)
+							return err
 						}
 
 					}
@@ -171,6 +174,8 @@ func recDirTree(ctx context.Context, client *gphotos.Client, out io.Writer, path
 			recDirTree(ctx, client, out, filepath.Join(path, pathList[index]), lvl, uploadedFiles, limit, step)
 		}
 	}
+
+	return nil
 
 }
 
