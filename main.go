@@ -112,11 +112,17 @@ func recDirTree(ctx context.Context, client *gphotos.Client, out io.Writer, path
 
 	var size int64
 	var pathList []string
-	var availableExt = []string{".png", ".JPG", ".jpg"}
+	var availableExt = []string{".png", ".JPG", ".jpg", ".jpeg"}
 
 	lvl++
-	hPath, _ := os.Open(path)
-	fInfo, _ := hPath.Stat()
+
+	//fmt.Println(path)
+
+	hPath, err := os.Open(path)
+	check(err)
+	fInfo, err := hPath.Stat()
+	//fmt.Println(fInfo)
+	check(err)
 
 	if fInfo.IsDir() {
 		pathList, _ = hPath.Readdirnames(10000)
@@ -126,8 +132,12 @@ func recDirTree(ctx context.Context, client *gphotos.Client, out io.Writer, path
 	for index := range pathList {
 
 		absolutePath := filepath.Join(path, pathList[index])
-		hPathFile, _ := os.Open(absolutePath)
-		fInfoFile, _ := hPathFile.Stat()
+		hPathFile, err := os.Open(absolutePath)
+		check(err)
+		fInfoFile, err := hPathFile.Stat()
+		hPathFile.Close()
+
+		check(err)
 
 		if !fInfoFile.IsDir() {
 			size = fInfoFile.Size()
